@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation' // 🔒 Importante para el redireccionamiento
 
 // 1. Definimos la estructura del objeto Pedido
 interface Pedido {
@@ -14,41 +15,44 @@ interface Pedido {
 
 export default function PantallaCocina() {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
+  const router = useRouter() // 🔒 Inicializamos el router
 
   useEffect(() => {
+    // 🔒 1. Verificar si el usuario puso el PIN
+    const auth = localStorage.getItem('auth_hotel')
+    if (auth !== 'true') {
+      router.push('/login') // Si no hay auth, lo manda al login
+      return
+    }
+
     // 2. Función para traer los datos de la DB
     const cargarPedidos = async () => {
       const { data } = await supabase
         .from('pedidos')
         .select('*')
-        .eq('estado', 'pendiente_pago') // Solo mostramos lo que falta por cocinar
-        .order('created_at', { ascending: true }) // FIFO: El primero que llega es el primero en salir
+        .eq('estado', 'pagado') // Solo lo que ya se cobró en caja
+        .order('created_at', { ascending: true }) 
       
       if (data) setPedidos(data as Pedido[])
     }
 
-    // 3. Ejecutamos la carga inicial
     cargarPedidos()
 
-    // 4. SUSCRIPCIÓN EN TIEMPO REAL
+    // 3. TIEMPO REAL
     const canal = supabase
       .channel('cambios-cocina')
       .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'pedidos' }, 
-          () => {
-            // Cada vez que pase algo en la tabla, refrescamos la lista
-            cargarPedidos()
-          }
+          () => cargarPedidos()
       )
       .subscribe()
 
-    // 5. Limpieza al cerrar la página
     return () => {
       supabase.removeChannel(canal)
     }
-  }, [])
+  }, [router])
 
-  // 6. Función para cuando el Chef termina un pedido
+  // 4. Función para cuando el Chef termina un pedido
   const terminarPedido = async (id: string) => {
     const { error } = await supabase
       .from('pedidos')
@@ -64,9 +68,17 @@ export default function PantallaCocina() {
         <h1 className="text-3xl font-bold flex gap-3 items-center">
           👨‍🍳 Panel de Cocina
         </h1>
-        <span className="bg-slate-800 px-4 py-2 rounded-full text-sm font-mono text-orange-400 border border-orange-500/30">
-          En línea — Tiempo Real
-        </span>
+        <div className="flex items-center gap-4">
+            <span className="bg-slate-800 px-4 py-2 rounded-full text-sm font-mono text-orange-400 border border-orange-500/30">
+              En línea — Tiempo Real
+            </span>
+            <button 
+                onClick={() => { localStorage.removeItem('auth_hotel'); router.push('/login'); }}
+                className="text-xs text-slate-500 hover:text-white underline"
+            >
+                Cerrar Sesión
+            </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -107,7 +119,7 @@ export default function PantallaCocina() {
         <div className="flex flex-col items-center justify-center mt-32 opacity-40">
           <div className="text-6xl mb-4">😴</div>
           <p className="text-2xl font-medium">Bandeja de entrada vacía</p>
-          <p className="text-sm italic">Esperando que un cliente haga un pedido...</p>
+          <p className="text-sm italic">Esperando que un cliente pague su pedido...</p>
         </div>
       )}
     </div>

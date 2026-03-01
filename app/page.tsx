@@ -1,24 +1,37 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase' 
-import { ShoppingCart, Utensils } from 'lucide-react'
+import { ShoppingCart, Utensils, Plus } from 'lucide-react'
 
-// 1. Definimos qué es un Producto para que TypeScript no llore
 interface Producto {
   id: number;
   nombre: string;
   precio: number;
-  emoji: string;
+  emoji: string; // Aquí guardamos la URL de la foto
 }
 
 const PRODUCTOS: Producto[] = [
-  { id: 1, nombre: "Hamb. Clásica", precio: 8.50, emoji: "🍔" },
-  { id: 2, nombre: "Papas Grandes", precio: 3.00, emoji: "🍟" },
-  { id: 3, nombre: "Soda Gde", precio: 2.00, emoji: "🥤" },
+  { 
+    id: 1, 
+    nombre: "Hamb. Clásica", 
+    precio: 8.50, 
+    emoji: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80" 
+  },
+  { 
+    id: 2, 
+    nombre: "Papas Grandes", 
+    precio: 3.00, 
+    emoji: "https://images.unsplash.com/photo-1573010334382-02942823d529?w=500&q=80" 
+  },
+  { 
+    id: 3, 
+    nombre: "Soda Gde", 
+    precio: 2.00, 
+    emoji: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&q=80" 
+  },
 ];
 
 export default function ClienteMenu() {
-  // 2. Le decimos al estado que guardará una lista de Productos
   const [carrito, setCarrito] = useState<Producto[]>([]);
   const [enviando, setEnviando] = useState(false);
 
@@ -39,57 +52,70 @@ export default function ClienteMenu() {
           cliente: "Mesa 1", 
           items: carrito, 
           total: total,
-          estado: 'pendiente_pago' 
+          estado: 'pendiente_pago' // EL FLUJO EMPIEZA AQUÍ
         }
       ]);
 
     if (error) {
       alert("Error: " + error.message);
     } else {
-      alert("¡Pedido enviado con éxito! 🚀");
+      alert("¡Pedido enviado! Por favor, acércate a caja para pagar. 🚀");
       setCarrito([]);
     }
     setEnviando(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 pb-24 text-black">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Utensils className="text-orange-500" /> BurgerHub
+    <div className="min-h-screen bg-gray-50 p-4 pb-32 text-black">
+      <header className="flex justify-between items-center mb-8 pt-4">
+        <h1 className="text-3xl font-black flex items-center gap-2 text-slate-800">
+          <Utensils className="text-orange-500" size={32} /> BurgerHub
         </h1>
+        <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-sm font-bold">
+          Mesa 01
+        </div>
       </header>
 
-      <div className="grid gap-4">
+      <div className="grid gap-6">
         {PRODUCTOS.map((p) => (
-          <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border">
-            <div>
-              <span className="text-2xl">{p.emoji}</span>
-              <h3 className="font-semibold">{p.nombre}</h3>
-              <p className="text-gray-500">${p.precio.toFixed(2)}</p>
+          <div key={p.id} className="bg-white p-3 rounded-2xl shadow-md flex justify-between items-center border border-gray-100 group transition-all">
+            <div className="flex items-center gap-4">
+              {/* FOTO REAL EN LUGAR DE EMOJI */}
+              <img 
+                src={p.emoji} 
+                alt={p.nombre} 
+                className="w-20 h-20 object-cover rounded-xl shadow-inner"
+              />
+              <div>
+                <h3 className="font-bold text-lg text-slate-800">{p.nombre}</h3>
+                <p className="text-orange-500 font-black text-xl">${p.precio.toFixed(2)}</p>
+              </div>
             </div>
             <button 
               onClick={() => agregarAlCarrito(p)}
-              className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold active:scale-95 transition-transform"
+              className="bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-orange-200 active:scale-90 transition-all"
             >
-              +
+              <Plus size={24} />
             </button>
           </div>
         ))}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t flex justify-between items-center">
+      {/* FOOTER DEL CARRITO */}
+      <div className="fixed bottom-6 left-4 right-4 p-5 bg-white rounded-3xl border shadow-2xl flex justify-between items-center z-50">
         <div>
-          <p className="text-sm text-gray-500">Items: {carrito.length}</p>
-          <p className="text-xl font-bold">Total: ${carrito.reduce((acc, p) => acc + p.precio, 0).toFixed(2)}</p>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Tu Orden ({carrito.length})</p>
+          <p className="text-2xl font-black text-slate-900">
+            Total: ${carrito.reduce((acc, p) => acc + p.precio, 0).toFixed(2)}
+          </p>
         </div>
         <button 
           onClick={enviarPedido}
-          disabled={enviando}
-          className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold flex gap-2 items-center disabled:bg-gray-400"
+          disabled={enviando || carrito.length === 0}
+          className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-2xl font-black flex gap-3 items-center disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-xl shadow-green-100"
         >
-          <ShoppingCart size={20} />
-          {enviando ? "Enviando..." : "PEDIR YA"}
+          <ShoppingCart size={24} />
+          {enviando ? "..." : "PEDIR"}
         </button>
       </div>
     </div>

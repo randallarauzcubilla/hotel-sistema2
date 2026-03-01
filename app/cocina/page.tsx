@@ -1,9 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation' // 🔒 Importante para el redireccionamiento
 
-// 1. Definimos la estructura del objeto Pedido
+// 1. Estructura de los datos
 interface Pedido {
   id: string;
   created_at: string;
@@ -15,22 +14,14 @@ interface Pedido {
 
 export default function PantallaCocina() {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
-  const router = useRouter() // 🔒 Inicializamos el router
 
   useEffect(() => {
-    // 🔒 1. Verificar si el usuario puso el PIN
-    const auth = localStorage.getItem('auth_hotel')
-    if (auth !== 'true') {
-      router.push('/login') // Si no hay auth, lo manda al login
-      return
-    }
-
-    // 2. Función para traer los datos de la DB
+    // 2. Función para cargar pedidos que ya fueron PAGADOS en caja
     const cargarPedidos = async () => {
       const { data } = await supabase
         .from('pedidos')
         .select('*')
-        .eq('estado', 'pagado') // Solo lo que ya se cobró en caja
+        .eq('estado', 'pagado') // Filtro clave: Solo lo que caja ya cobró
         .order('created_at', { ascending: true }) 
       
       if (data) setPedidos(data as Pedido[])
@@ -38,7 +29,7 @@ export default function PantallaCocina() {
 
     cargarPedidos()
 
-    // 3. TIEMPO REAL
+    // 3. Suscripción en Tiempo Real para recibir pedidos nuevos apenas se paguen
     const canal = supabase
       .channel('cambios-cocina')
       .on('postgres_changes', 
@@ -50,56 +41,52 @@ export default function PantallaCocina() {
     return () => {
       supabase.removeChannel(canal)
     }
-  }, [router])
+  }, [])
 
-  // 4. Función para cuando el Chef termina un pedido
+  // 4. Función para marcar como terminado y que salga de la pantalla
   const terminarPedido = async (id: string) => {
     const { error } = await supabase
       .from('pedidos')
       .update({ estado: 'listo' })
       .eq('id', id)
     
-    if (error) console.error("Error al actualizar:", error.message)
+    if (error) console.error("Error:", error.message)
   }
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-6">
       <header className="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
-        <h1 className="text-3xl font-bold flex gap-3 items-center">
-          👨‍🍳 Panel de Cocina
-        </h1>
-        <div className="flex items-center gap-4">
-            <span className="bg-slate-800 px-4 py-2 rounded-full text-sm font-mono text-orange-400 border border-orange-500/30">
-              En línea — Tiempo Real
-            </span>
-            <button 
-                onClick={() => { localStorage.removeItem('auth_hotel'); router.push('/login'); }}
-                className="text-xs text-slate-500 hover:text-white underline"
-            >
-                Cerrar Sesión
-            </button>
+        <div>
+          <h1 className="text-3xl font-black flex gap-3 items-center">
+            👨‍🍳 COCINA
+          </h1>
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Ordenes por preparar</p>
         </div>
+        <span className="bg-orange-500/10 px-4 py-2 rounded-full text-xs font-bold text-orange-500 border border-orange-500/20 animate-pulse">
+          MODO RECEPTOR ACTIVO
+        </span>
       </header>
 
+      {/* Grid de Pedidos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {pedidos.map((p) => (
-          <div key={p.id} className="bg-slate-800 border-t-4 border-orange-500 p-6 rounded-xl shadow-2xl transition-all">
+          <div key={p.id} className="bg-slate-800 border-t-8 border-orange-600 p-6 rounded-2xl shadow-2xl">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <p className="text-xs text-slate-400 font-mono">ID: {p.id.slice(0, 8)}</p>
-                <h2 className="text-xl font-black text-orange-100 uppercase">{p.cliente}</h2>
+                <p className="text-[10px] text-slate-500 font-mono leading-none mb-1 uppercase tracking-tighter">Ticket: {p.id.slice(0, 8)}</p>
+                <h2 className="text-2xl font-black text-white uppercase">{p.cliente}</h2>
               </div>
-              <span className="text-xs text-slate-400 italic">
-                {new Date(p.created_at).toLocaleTimeString()}
+              <span className="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">
+                {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
             
-            <div className="bg-slate-900/50 rounded-lg p-4 mb-6 border border-slate-700/50">
-              <ul className="space-y-3">
+            <div className="bg-slate-900/80 rounded-xl p-4 mb-6 border border-slate-700">
+              <ul className="space-y-4">
                 {p.items?.map((item, index) => (
-                  <li key={index} className="flex justify-between items-center text-lg">
-                    <span>{item.nombre}</span>
-                    <span className="bg-slate-700 text-orange-400 text-xs px-2 py-1 rounded font-bold">x1</span>
+                  <li key={index} className="flex justify-between items-center">
+                    <span className="text-xl font-medium">{item.nombre}</span>
+                    <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded-md font-black">X1</span>
                   </li>
                 ))}
               </ul>
@@ -107,19 +94,20 @@ export default function PantallaCocina() {
 
             <button 
               onClick={() => terminarPedido(p.id)}
-              className="w-full bg-orange-600 hover:bg-orange-500 active:scale-95 text-white p-4 rounded-xl font-black text-lg transition-all shadow-lg shadow-orange-900/20"
+              className="w-full bg-orange-600 hover:bg-orange-500 active:scale-95 text-white py-4 rounded-xl font-black text-lg transition-all shadow-lg shadow-orange-950/20"
             >
-              MARCAR COMO LISTO ✅
+              ORDEN LISTA ✅
             </button>
           </div>
         ))}
       </div>
       
+      {/* Estado vacío */}
       {pedidos.length === 0 && (
-        <div className="flex flex-col items-center justify-center mt-32 opacity-40">
-          <div className="text-6xl mb-4">😴</div>
-          <p className="text-2xl font-medium">Bandeja de entrada vacía</p>
-          <p className="text-sm italic">Esperando que un cliente pague su pedido...</p>
+        <div className="flex flex-col items-center justify-center mt-40 opacity-20">
+          <div className="text-8xl mb-4 text-slate-500">🍽️</div>
+          <p className="text-2xl font-black">SIN PEDIDOS PENDIENTES</p>
+          <p className="text-sm italic">Los pedidos pagados en Caja aparecerán aquí.</p>
         </div>
       )}
     </div>

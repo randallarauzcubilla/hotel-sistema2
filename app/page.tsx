@@ -21,7 +21,7 @@ const PRODUCTOS: Producto[] = [
     id: 2, 
     nombre: "Papas Grandes", 
     precio: 3.00, 
-    emoji: "https://images.unsplash.com/photo-1573010334382-02942823d529?w=500&q=80" 
+    emoji: "https://images.unsplash.com/photo-1518013431117-eb1465fa5752?w=500&q=80" 
   },
   { 
     id: 3, 

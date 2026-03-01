@@ -6,32 +6,43 @@ export default function LoginPage() {
   const [pin, setPin] = useState('')
   const router = useRouter()
 
-  const verificar = () => {
-    if (pin === '1234') { // <--- AQUÍ pones tu contraseña
+  const verificar = (destino: string) => {
+    if (pin === '1234') {
       localStorage.setItem('auth_hotel', 'true')
-      router.push('/cocina')
+      router.push(destino) // <--- Ahora viaja a donde tú le des clic
     } else {
       alert('PIN Incorrecto ❌')
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-auto max-w-sm border border-slate-700">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">Acceso Personal</h2>
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 text-white">
+      <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-slate-700">
+        <h2 className="text-2xl font-bold mb-6 text-center">Panel de Control</h2>
+        
         <input 
           type="password" 
-          placeholder="Ingresa el PIN"
-          className="w-full p-4 rounded-xl bg-slate-900 text-white text-center text-2xl tracking-widest mb-4 outline-none border-2 border-transparent focus:border-orange-500"
+          placeholder="PIN de acceso"
+          className="w-full p-4 rounded-2xl bg-slate-900 text-center text-3xl mb-6 outline-none border-2 border-transparent focus:border-orange-500"
           value={pin}
           onChange={(e) => setPin(e.target.value)}
         />
-        <button 
-          onClick={verificar}
-          className="w-full bg-orange-600 text-white p-4 rounded-xl font-bold text-lg hover:bg-orange-500 transition-all"
-        >
-          ENTRAR
-        </button>
+
+        <div className="grid gap-3">
+          <button 
+            onClick={() => verificar('/caja')}
+            className="w-full bg-emerald-600 p-4 rounded-xl font-bold hover:bg-emerald-500 transition-all"
+          >
+            💰 ENTRAR A CAJA
+          </button>
+          
+          <button 
+            onClick={() => verificar('/cocina')}
+            className="w-full bg-orange-600 p-4 rounded-xl font-bold hover:bg-orange-500 transition-all"
+          >
+            👨‍🍳 ENTRAR A COCINA
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -27,13 +27,12 @@ export default function LoginPage() {
     // 2. Obtener rol del usuario
     const { data: usuario } = await supabase
       .from('usuarios')
-      .select('rol:roles(nombre)')
+      .select('*, roles(nombre)')
       .eq('id', data.user.id)
       .single()
 
-    const rolData = usuario?.rol
-    const rol = Array.isArray(rolData) ? rolData[0]?.nombre : (rolData as unknown as {nombre: string})?.nombre
-    
+    const rol = (usuario?.roles as {nombre: string})?.nombre
+
     // 3. Redirigir según rol
     if (rol === 'cocina') router.push('/cocina')
     else if (rol === 'caja') router.push('/caja')

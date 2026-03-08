@@ -20,11 +20,14 @@ export default function PantallaCaja() {
 
   useEffect(() => {
     // 🔒 SEGURIDAD: Si no hay login, rebota al login
-    const auth = localStorage.getItem('auth_hotel')
-    if (auth !== 'true') {
-      router.push('/login')
-      return 
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
     }
+    checkAuth()
 
     // 2. Cargar pedidos que esperan pago
     const cargarCaja = async () => {

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 // 1. Estructura de los datos
 interface Pedido {
@@ -14,14 +15,25 @@ interface Pedido {
 
 export default function PantallaCocina() {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
+  const router = useRouter()
 
   useEffect(() => {
+    // 🔒 SEGURIDAD: Si no hay login, rebota al login
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+    }
+    checkAuth()
+
     // 2. Función para cargar pedidos que ya fueron PAGADOS en caja
     const cargarPedidos = async () => {
       const { data } = await supabase
         .from('pedidos')
         .select('*')
-        .eq('estado', 'pagado') // Filtro clave: Solo lo que caja ya cobró
+        .eq('estado', 'pagado')
         .order('created_at', { ascending: true }) 
       
       if (data) setPedidos(data as Pedido[])
@@ -29,7 +41,7 @@ export default function PantallaCocina() {
 
     cargarPedidos()
 
-    // 3. Suscripción en Tiempo Real para recibir pedidos nuevos apenas se paguen
+    // 3. Suscripción en Tiempo Real
     const canal = supabase
       .channel('cambios-cocina')
       .on('postgres_changes', 
@@ -41,9 +53,9 @@ export default function PantallaCocina() {
     return () => {
       supabase.removeChannel(canal)
     }
-  }, [])
+  }, [router])
 
-  // 4. Función para marcar como terminado y que salga de la pantalla
+  // 4. Función para marcar como terminado
   const terminarPedido = async (id: string) => {
     const { error } = await supabase
       .from('pedidos')
@@ -51,6 +63,12 @@ export default function PantallaCocina() {
       .eq('id', id)
     
     if (error) console.error("Error:", error.message)
+  }
+
+  // 5. Cerrar sesión
+  const cerrarSesion = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
   }
 
   return (
@@ -62,9 +80,17 @@ export default function PantallaCocina() {
           </h1>
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Ordenes por preparar</p>
         </div>
-        <span className="bg-orange-500/10 px-4 py-2 rounded-full text-xs font-bold text-orange-500 border border-orange-500/20 animate-pulse">
-          MODO RECEPTOR ACTIVO
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="bg-orange-500/10 px-4 py-2 rounded-full text-xs font-bold text-orange-500 border border-orange-500/20 animate-pulse">
+            MODO RECEPTOR ACTIVO
+          </span>
+          <button
+            onClick={cerrarSesion}
+            className="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-4 py-2 rounded-xl text-xs font-bold border border-red-500/20 transition-all"
+          >
+            Salir 🚪
+          </button>
+        </div>
       </header>
 
       {/* Grid de Pedidos */}

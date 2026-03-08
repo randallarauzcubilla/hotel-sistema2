@@ -1,48 +1,77 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
-  const [pin, setPin] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const verificar = (destino: string) => {
-    if (pin === '1234') {
-      localStorage.setItem('auth_hotel', 'true')
-      router.push(destino) // <--- Ahora viaja a donde tú le des clic
-    } else {
-      alert('PIN Incorrecto ❌')
+  const verificar = async () => {
+    setLoading(true)
+    
+    // 1. Login con Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (error) {
+      alert('Credenciales incorrectas ❌')
+      setLoading(false)
+      return
     }
+
+    // 2. Obtener rol del usuario
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('rol:roles(nombre)')
+      .eq('id', data.user.id)
+      .single()
+
+    const rolData = usuario?.rol
+    const rol = Array.isArray(rolData) ? rolData[0]?.nombre : (rolData as unknown as {nombre: string})?.nombre
+    
+    // 3. Redirigir según rol
+    if (rol === 'cocina') router.push('/cocina')
+    else if (rol === 'caja') router.push('/caja')
+    else if (rol === 'mesero') router.push('/')
+    else if (rol === 'admin') router.push('/admin')
+    else alert('Rol no reconocido ❌')
+
+    setLoading(false)
   }
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 text-white">
       <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-slate-700">
         <h2 className="text-2xl font-bold mb-6 text-center">Panel de Control</h2>
-        
-        <input 
-          type="password" 
-          placeholder="PIN de acceso"
-          className="w-full p-4 rounded-2xl bg-slate-900 text-center text-3xl mb-6 outline-none border-2 border-transparent focus:border-orange-500"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
+
+        <input
+          type="email"
+          placeholder="Correo"
+          className="w-full p-4 rounded-2xl bg-slate-900 mb-4 outline-none border-2 border-transparent focus:border-orange-500"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
 
-        <div className="grid gap-3">
-          <button 
-            onClick={() => verificar('/caja')}
-            className="w-full bg-emerald-600 p-4 rounded-xl font-bold hover:bg-emerald-500 transition-all"
-          >
-            💰 ENTRAR A CAJA
-          </button>
-          
-          <button 
-            onClick={() => verificar('/cocina')}
-            className="w-full bg-orange-600 p-4 rounded-xl font-bold hover:bg-orange-500 transition-all"
-          >
-            👨‍🍳 ENTRAR A COCINA
-          </button>
-        </div>
+        <input
+          type="password"
+          placeholder="Contraseña"
+          className="w-full p-4 rounded-2xl bg-slate-900 mb-6 outline-none border-2 border-transparent focus:border-orange-500"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button
+          onClick={verificar}
+          disabled={loading}
+          className="w-full bg-orange-600 p-4 rounded-xl font-bold hover:bg-orange-500 transition-all disabled:opacity-50"
+        >
+          {loading ? 'Verificando...' : 'ENTRAR'}
+        </button>
       </div>
     </div>
   )
